@@ -1,13 +1,13 @@
 # Isotonic Bradley-Terry Model for Paired Comparison Data
 
-- Section 5.1:
+Experiments in Section 5.1:
 1. python main.py in ./synthetic
 2. python summary.py in ./synthetic
 
-Section 5.2:
+Experiments in Section 5.2:
 1. python main.py in ./football
 2. python summary.py in ./football 
 
-Appendix A:
+Experiments in Appendix A:
 1. python rating-nll.py in ./rank
 2. python rating-sq.py in ./rank
