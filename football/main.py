@@ -1,4 +1,3 @@
-#python bash.py
 import os
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
@@ -10,8 +9,8 @@ import itertools
 from mpi4py import MPI
 
 comm = MPI.COMM_WORLD
-rank = comm.Get_rank()  # 自分の番号 (0 ～ 1919)
-size = comm.Get_size()  # 全プロセス数 (1920)
+rank = comm.Get_rank()
+size = comm.Get_size()
 
 
 def MP(run_script,tasks):
