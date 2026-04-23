@@ -77,7 +77,7 @@ def rnk6(R, W, P):
 
 ITE = 10
 est = np.zeros((ITE,n))
-err = np.zeros((2*ITE,20))
+err = np.zeros((2*ITE,n))
 for ite in range(ITE):
     # preparation
     EP1 = 100; EP2 = 100; res = np.zeros((EP1,n+2))
