@@ -24,14 +24,23 @@ if os.path.exists("Results-nll/%f/error-%f-%d.csv"%(r,r,seed))==False:
     Y = np.zeros((n,n))
     for i in range(n-1):
         for j in range(i+1,n):
-            if W[i,j]>=0.5: Y[i,j] = 1.
-            if W[j,i]>=0.5: Y[j,i] = 1.
+            if W[i,j]!=-1:
+                if W[i,j]>=0.5: Y[i,j] = 1.
+                if W[j,i]>=0.5: Y[j,i] = 1.
     # data split
-    train_P = np.zeros((n,n)); test_P = np.zeros((n,n))
+    all_ij = []
     for i in range(n-1):
         for j in range(i+1,n):
-            if rd.rand()<=r: train_P[i,j] = 1; train_P[j,i] = 1
-            else: test_P[i,j] = 1; test_P[j,i] = 1
+            if W[i,j]!=-1: all_ij.append((i,j))
+    ind = np.arange(len(all_ij))
+    np.random.shuffle(ind)
+    split_idx = int(r*len(all_ij))
+    train_idx_list = ind[:split_idx]; test_idx_list = ind[split_idx:]
+    train_P = np.zeros((n, n)); test_P = np.zeros((n, n))
+    for k in train_idx_list:
+        train_P[all_ij[k][0],all_ij[k][1]] = 1; train_P[all_ij[k][1],all_ij[k][0]] = 1
+    for k in test_idx_list:
+        test_P[all_ij[k][0],all_ij[k][1]] = 1; test_P[all_ij[k][1],all_ij[k][0]] = 1
 
     # loss & gradient function
     def obj(R, W, P):

@@ -28,7 +28,7 @@ for _, row in df.iterrows():
         wins[a][h] += 0.5
 
 win_rate = np.full((n, n), np.nan)
-np.fill_diagonal(win_rate, np.nan)  # 自己対戦はNaN
+np.fill_diagonal(win_rate, np.nan)
 
 for i in range(n):
     for j in range(n):

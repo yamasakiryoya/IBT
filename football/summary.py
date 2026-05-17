@@ -3,23 +3,26 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import japanize_matplotlib
+from scipy import stats
 plt.rcParams["font.size"] = 20
 plt.rcParams['text.usetex'] = True
+import warnings
+warnings.simplefilter('ignore')
 
-if os.path.isdir("Foot/nll-objW")==False: os.makedirs("Foot/nll-objW", exist_ok=True)
-if os.path.isdir("Foot/nll-objY")==False: os.makedirs("Foot/nll-objY", exist_ok=True)
-if os.path.isdir("Foot/nll-rank1")==False: os.makedirs("Foot/nll-rank1", exist_ok=True)
-if os.path.isdir("Foot/nll-rank2")==False: os.makedirs("Foot/nll-rank2", exist_ok=True)
-if os.path.isdir("Foot/nll-rank3")==False: os.makedirs("Foot/nll-rank3", exist_ok=True)
-if os.path.isdir("Foot/nll-rank4")==False: os.makedirs("Foot/nll-rank4", exist_ok=True)
-if os.path.isdir("Foot/nll-rank5")==False: os.makedirs("Foot/nll-rank5", exist_ok=True)
-if os.path.isdir("Foot/nll-rank6")==False: os.makedirs("Foot/nll-rank6", exist_ok=True)
+if os.path.isdir("Foot/sq-objW")==False: os.makedirs("Foot/sq-objW", exist_ok=True)
+if os.path.isdir("Foot/sq-objY")==False: os.makedirs("Foot/sq-objY", exist_ok=True)
+if os.path.isdir("Foot/sq-rank1")==False: os.makedirs("Foot/sq-rank1", exist_ok=True)
+if os.path.isdir("Foot/sq-rank2")==False: os.makedirs("Foot/sq-rank2", exist_ok=True)
+if os.path.isdir("Foot/sq-rank3")==False: os.makedirs("Foot/sq-rank3", exist_ok=True)
+if os.path.isdir("Foot/sq-rank4")==False: os.makedirs("Foot/sq-rank4", exist_ok=True)
+if os.path.isdir("Foot/sq-rank5")==False: os.makedirs("Foot/sq-rank5", exist_ok=True)
+if os.path.isdir("Foot/sq-rank6")==False: os.makedirs("Foot/sq-rank6", exist_ok=True)
 
 
 for r in [.1,.3,.5,.7,.9]:
-    res = np.zeros((100,10,32))
-    for seed in range(100):
-        res[seed] = np.loadtxt("Results-nll/%f/error-%f-%d.csv"%(r,r,seed), delimiter=",")#np.nan_to_num(, posinf=10.**20)
+    res = np.zeros((1000,10,32))
+    for seed in range(1000):
+        res[seed] = np.loadtxt("Results-sq/%f/error-%f-%d.csv"%(r,r,seed), delimiter=",")#np.nan_to_num(, posinf=10.**20)
         for k in range(10):
             if np.all(res[seed,k,:] == 0):
                 res[seed,k,:16] = res[seed,k-1,16:]
@@ -61,7 +64,10 @@ for r in [.1,.3,.5,.7,.9]:
     ax.set_xlabel(r'\#update: $s,t$ of $(\hat{\sigma}^{[s]},(\hat{r}_i^{[t]})_{i\in[n]})$')
     ax.set_ylabel(r'WPP error')
     ax.set_xlim(0,21); ax.grid(True)
-    plt.savefig("./Foot/nll-objW/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
+    plt.savefig("./Foot/sq-objW/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
+
+    test = stats.mannwhitneyu(res[:,np.argmin(tes1)//2,16*(np.argmin(tes1)%2)+1], res[:,0,1], alternative='less')
+    if test.pvalue<=0.05: print("./Plots/sq-objW/%f.png"%r)
 
     mean = np.mean(res, axis=0)
     q1 = np.quantile(res, q=0.25, axis=0)
@@ -99,7 +105,7 @@ for r in [.1,.3,.5,.7,.9]:
     ax.set_xlabel(r'\#update: $s,t$ of $(\hat{\sigma}^{[s]},(\hat{r}_i^{[t]})_{i\in[n]})$')
     ax.set_ylabel(r'WPP error')
     ax.set_xlim(0,21); ax.grid(True)
-    plt.savefig("./Foot/nll-objY/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
+    plt.savefig("./Foot/sq-objY/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
 
     mean = np.mean(res, axis=0)
     q1 = np.quantile(res, q=0.25, axis=0)
@@ -137,8 +143,11 @@ for r in [.1,.3,.5,.7,.9]:
     ax.set_xlabel(r'\#update: $s,t$ of $(\hat{\sigma}^{[s]},(\hat{r}_i^{[t]})_{i\in[n]})$')
     ax.set_ylabel(r"Kendall's Tau")
     ax.set_xlim(0,21); ax.grid(True)
-    plt.savefig("./Foot/nll-rank1/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
+    plt.savefig("./Foot/sq-rank1/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
 
+    test = stats.mannwhitneyu(res[:,np.argmax(tes1)//2,16*(np.argmax(tes1)%2)+5], res[:,0,5], alternative='greater')
+    if test.pvalue<=0.05: print("./Plots/WPP-sq-rank1/%f.png"%r)
+    
     mean = np.mean(res, axis=0)
     q1 = np.quantile(res, q=0.25, axis=0)
     q2 = np.quantile(res, q=0.50, axis=0)
@@ -175,7 +184,10 @@ for r in [.1,.3,.5,.7,.9]:
     ax.set_xlabel(r'\#update: $s,t$ of $(\hat{\sigma}^{[s]},(\hat{r}_i^{[t]})_{i\in[n]})$')
     ax.set_ylabel(r"Spearman's Rho")
     ax.set_xlim(0,21); ax.grid(True)
-    plt.savefig("./Foot/nll-rank2/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
+    plt.savefig("./Foot/sq-rank2/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
+
+    test = stats.mannwhitneyu(res[:,np.argmax(tes1)//2,16*(np.argmax(tes1)%2)+7], res[:,0,7], alternative='greater')
+    if test.pvalue<=0.05: print("./Plots/WPP-sq-rank2/%f.png"%r)
 
     mean = np.mean((1-res), axis=0)
     q1 = np.quantile((1-res), q=0.25, axis=0)
@@ -213,7 +225,7 @@ for r in [.1,.3,.5,.7,.9]:
     ax.set_xlabel(r'\#update: $s,t$ of $(\hat{\sigma}^{[s]},(\hat{r}_i^{[t]})_{i\in[n]})$')
     ax.set_ylabel(r'Tie criterion')
     ax.set_xlim(0,21); ax.grid(True)
-    plt.savefig("./Foot/nll-rank3/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
+    plt.savefig("./Foot/sq-rank3/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
 
 
     mean = np.mean(res, axis=0)
@@ -252,7 +264,7 @@ for r in [.1,.3,.5,.7,.9]:
     ax.set_xlabel(r'\#update: $s,t$ of $(\hat{\sigma}^{[s]},(\hat{r}_i^{[t]})_{i\in[n]})$')
     ax.set_ylabel(r"Kendall's Tau")
     ax.set_xlim(0,21); ax.grid(True)
-    plt.savefig("./Foot/nll-rank4/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
+    plt.savefig("./Foot/sq-rank4/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
 
 
     mean = np.mean(res, axis=0)
@@ -291,7 +303,7 @@ for r in [.1,.3,.5,.7,.9]:
     ax.set_xlabel(r'\#update: $s,t$ of $(\hat{\sigma}^{[s]},(\hat{r}_i^{[t]})_{i\in[n]})$')
     ax.set_ylabel(r"Spearman's Rho")
     ax.set_xlim(0,21); ax.grid(True)
-    plt.savefig("./Foot/nll-rank5/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
+    plt.savefig("./Foot/sq-rank5/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
 
 
     mean = np.mean((1-res), axis=0)
@@ -330,7 +342,7 @@ for r in [.1,.3,.5,.7,.9]:
     ax.set_xlabel(r'\#update: $s,t$ of $(\hat{\sigma}^{[s]},(\hat{r}_i^{[t]})_{i\in[n]})$')
     ax.set_ylabel(r'Tie criterion')
     ax.set_xlim(0,21); ax.grid(True)
-    plt.savefig("./Foot/nll-rank6/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
+    plt.savefig("./Foot/sq-rank6/%f.png"%r, bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 
 
 
 if os.path.isdir("Foot/sq-objW")==False: os.makedirs("Foot/sq-objW", exist_ok=True)

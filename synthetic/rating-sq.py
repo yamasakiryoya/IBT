@@ -28,11 +28,19 @@ if os.path.exists("Results-sq/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed)
             if W[i,j]>=0.5: Y[i,j] = 1.
             if W[j,i]>=0.5: Y[j,i] = 1.
     # data split
-    train_P = np.zeros((n,n)); test_P = np.zeros((n,n))
+    all_ij = []
     for i in range(n-1):
         for j in range(i+1,n):
-            if rd.rand()<=r: train_P[i,j] = 1; train_P[j,i] = 1
-            else: test_P[i,j] = 1; test_P[j,i] = 1
+            if W[i,j]!=-1: all_ij.append((i,j))
+    ind = np.arange(len(all_ij))
+    np.random.shuffle(ind)
+    split_idx = int(r*len(all_ij))
+    train_idx_list = ind[:split_idx]; test_idx_list = ind[split_idx:]
+    train_P = np.zeros((n, n)); test_P = np.zeros((n, n))
+    for k in train_idx_list:
+        train_P[all_ij[k][0],all_ij[k][1]] = 1; train_P[all_ij[k][1],all_ij[k][0]] = 1
+    for k in test_idx_list:
+        test_P[all_ij[k][0],all_ij[k][1]] = 1; test_P[all_ij[k][1],all_ij[k][0]] = 1
 
     # loss & gradient function
     def obj(R, W, P):
@@ -148,7 +156,6 @@ if os.path.exists("Results-sq/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed)
         Rij = (est[ite].reshape(-1,1)-est[ite].reshape(1,-1))[train_P==1]
         Wij = W[train_P==1]
         L = len(Wij)
-
 
         ir = IsotonicRegression(out_of_bounds='clip')
         ir.fit(Rij.astype(np.float64), Wij.astype(np.float64))
