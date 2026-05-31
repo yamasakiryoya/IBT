@@ -61,7 +61,7 @@ if __name__ == "__main__":
         print(f"Success! Matrix shape: {win_matrix.shape}")
         np.savetxt(f"tennis_win_rate_{Y}_{N}.csv", win_matrix, delimiter=",")
         i, j = 0, 1
-        while win_matrix[i, j] == -1 and i < 99:
+        while win_matrix[i, j] == -1:
             i += 1
         if win_matrix[i, j] != -1:
             s = win_matrix[i, j] + win_matrix[j, i]
