@@ -6,10 +6,14 @@ import subprocess
 import itertools
 
 for seed, r in itertools.product(range(1000),[.1,.3,.5,.7,.9]):
-    subprocess.run(f"python ./rating-sq.py {seed} {r}", shell=True)
+    subprocess.run(f"python ./test-sq.py {seed} {r}", shell=True)
 for seed, r in itertools.product(range(1000),[.1,.3,.5,.7,.9]):
-    subprocess.run(f"python ./rating-nll.py {seed} {r}", shell=True)
+    subprocess.run(f"python ./test-nll.py {seed} {r}", shell=True)
 for seed, r in itertools.product(range(1000),[.1,.3,.5,.7,.9]):
-    subprocess.run(f"python ./rating-sq2.py {seed} {r}", shell=True)
+    subprocess.run(f"python ./valid-sq.py {seed} {r}", shell=True)
 for seed, r in itertools.product(range(1000),[.1,.3,.5,.7,.9]):
-    subprocess.run(f"python ./rating-nll2.py {seed} {r}", shell=True)
+    subprocess.run(f"python ./valid-nll.py {seed} {r}", shell=True)
+for r in [.1,.3,.5,.7,.9]:
+    subprocess.run(f"python ./plot-sq.py 0 {r}", shell=True)
+for r in [.1,.3,.5,.7,.9]:
+    subprocess.run(f"python ./plot-nll.py 0 {r}", shell=True)

@@ -91,7 +91,7 @@ if os.path.exists("Results-sq2/%f/error-%f-%d.csv"%(r,r,seed))==False:
         def rnk3(R, W, P):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             tmp1 = W[P==1]; tmp2 = expit(Q[P==1])
-            return 1-len(np.unique(tmp2))/tmp2.size
+            return np.sum(tmp2==0.5)/tmp2.size
         def rnk4(R, W, P):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             tmp1 = W[P==1]; tmp2 = Q[P==1]
@@ -105,7 +105,7 @@ if os.path.exists("Results-sq2/%f/error-%f-%d.csv"%(r,r,seed))==False:
         def rnk6(R, W, P):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             tmp1 = W[P==1]; tmp2 = Q[P==1]
-            return 1-len(np.unique(tmp2))/tmp2.size
+            return np.sum(tmp2==0.5)/tmp2.size
 
         est = np.zeros((ITE,n))
         for ite in range(ITE):
@@ -227,7 +227,7 @@ if os.path.exists("Results-sq2/%f/error-%f-%d.csv"%(r,r,seed))==False:
                 Q = R.reshape(-1,1)-R.reshape(1,-1)
                 M = model(Q, PX, PY)
                 tmp1 = W[P==1]; tmp2 = M[P==1]
-                return 1-len(np.unique(tmp2))/tmp2.size
+                return np.sum(tmp2==0.5)/tmp2.size
             def iso_rnk4(R, W, P, PX, PY):
                 Q = R.reshape(-1,1)-R.reshape(1,-1)
                 tmp1 = W[P==1]; tmp2 = Q[P==1]
@@ -241,7 +241,7 @@ if os.path.exists("Results-sq2/%f/error-%f-%d.csv"%(r,r,seed))==False:
             def iso_rnk6(R, W, P, PX, PY):
                 Q = R.reshape(-1,1)-R.reshape(1,-1)
                 tmp1 = W[P==1]; tmp2 = Q[P==1]
-                return 1-len(np.unique(tmp2))/tmp2.size
+                return np.sum(tmp2==0.5)/tmp2.size
 
             # evaluation
             if ite==0:

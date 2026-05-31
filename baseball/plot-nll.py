@@ -12,21 +12,30 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.isotonic import IsotonicRegression
 from scipy.stats import kendalltau,spearmanr
+import matplotlib
+import matplotlib.pyplot as plt
+import japanize_matplotlib
+from scipy import stats
+plt.rcParams["font.size"] = 20
+plt.rcParams['text.usetex'] = True
+import warnings
+warnings.simplefilter('ignore')
+
 
 args = sys.argv
-seed, n, r, T = int(args[1]), int(args[2]), float(args[3]), int(args[4])
-if os.path.isdir("Results-nll/%d-%f-%d"%(n,r,T))==False: os.makedirs("Results-nll/%d-%f-%d"%(n,r,T), exist_ok=True)
-if os.path.exists("Results-nll/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed))==False:
+seed, r = int(args[1]), float(args[2])
+if os.path.isdir("Results-nll3/")==False: os.makedirs("Results-nll3/", exist_ok=True)
+if os.path.exists("Results-nll3/plot-%f-%d.png"%(r,seed))==False:
     rd.seed(seed)
     # data
-    R = rd.normal(0,np.sqrt(3),n)
-    W = np.zeros((n,n)); Y = np.zeros((n,n))
+    W = np.loadtxt("win_rate_matrix.csv", delimiter=",")
+    n = len(W[0])
+    Y = np.zeros((n,n))
     for i in range(n-1):
         for j in range(i+1,n):
-            W[i,j] = rd.binomial(T, np.arctan(R[i]-R[j])/np.pi+0.5)/T#Cauchy's
-            W[j,i] = 1.-W[i,j]
-            if W[i,j]>=0.5: Y[i,j] = 1.
-            if W[j,i]>=0.5: Y[j,i] = 1.
+            if W[i,j]!=-1:
+                if W[i,j]>=0.5: Y[i,j] = 1.
+                if W[j,i]>=0.5: Y[j,i] = 1.
     # data split
     all_ij = []
     for i in range(n-1):
@@ -73,7 +82,7 @@ if os.path.exists("Results-nll/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed
     def rnk3(R, W, P):
         Q = R.reshape(-1,1)-R.reshape(1,-1)
         tmp1 = W[P==1]; tmp2 = expit(Q[P==1])
-        return 1-len(np.unique(tmp2))/tmp2.size
+        return np.sum(tmp2==0.5)/tmp2.size
     def rnk4(R, W, P):
         Q = R.reshape(-1,1)-R.reshape(1,-1)
         tmp1 = W[P==1]; tmp2 = Q[P==1]
@@ -87,9 +96,9 @@ if os.path.exists("Results-nll/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed
     def rnk6(R, W, P):
         Q = R.reshape(-1,1)-R.reshape(1,-1)
         tmp1 = W[P==1]; tmp2 = Q[P==1]
-        return 1-len(np.unique(tmp2))/tmp2.size
+        return np.sum(tmp2==0.5)/tmp2.size
 
-    ITE = 10
+    ITE = 1
     est = np.zeros((ITE,n))
     err = np.zeros((ITE,32))
     for ite in range(ITE):
@@ -144,7 +153,6 @@ if os.path.exists("Results-nll/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed
             if res[t,-2]==res[t-1,-2]: break
         final_t = t+1
         est[ite] = res[t,:n].copy()
-        if np.array_equal(est[ite],est[ite-1]): break
 
 
         # data preparation
@@ -156,7 +164,6 @@ if os.path.exists("Results-nll/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed
         ir.fit(Rij.astype(np.float64), Wij.astype(np.float64))
         PX = ir.X_thresholds_.astype(np.float64)
         PY = ir.y_thresholds_.astype(np.float64)
-
 
         def model(u, PX, PY):
             return np.interp(u, PX, PY, left=PY[0], right=PY[-1])
@@ -216,7 +223,7 @@ if os.path.exists("Results-nll/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             M = model(Q, PX, PY)
             tmp1 = W[P==1]; tmp2 = M[P==1]
-            return 1-len(np.unique(tmp2))/tmp2.size
+            return np.sum(tmp2==0.5)/tmp2.size
         def iso_rnk4(R, W, P, PX, PY):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             tmp1 = W[P==1]; tmp2 = Q[P==1]
@@ -230,59 +237,19 @@ if os.path.exists("Results-nll/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed
         def iso_rnk6(R, W, P, PX, PY):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             tmp1 = W[P==1]; tmp2 = Q[P==1]
-            return 1-len(np.unique(tmp2))/tmp2.size
+            return np.sum(tmp2==0.5)/tmp2.size
 
-        # evaluation
-        if ite==0:
-            err[ite,0] = obj(est[ite], W, train_P)
-            err[ite,1] = obj(est[ite], W, test_P)
-            err[ite,2] = obj(est[ite], Y, train_P)
-            err[ite,3] = obj(est[ite], Y, test_P)
-            err[ite,4] = rnk1(est[ite], W, train_P)
-            err[ite,5] = rnk1(est[ite], W, test_P)
-            err[ite,6] = rnk2(est[ite], W, train_P)
-            err[ite,7] = rnk2(est[ite], W, test_P)
-            err[ite,8] = rnk3(est[ite], W, train_P)
-            err[ite,9] = rnk3(est[ite], W, test_P)
-            err[ite,10]= rnk4(est[ite], W, train_P)
-            err[ite,11]= rnk4(est[ite], W, test_P)
-            err[ite,12]= rnk5(est[ite], W, train_P)
-            err[ite,13]= rnk5(est[ite], W, test_P)
-            err[ite,14]= rnk6(est[ite], W, train_P)
-            err[ite,15]= rnk6(est[ite], W, test_P)
-        else:
-            err[ite,0] = iso_obj(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,1] = iso_obj(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,2] = iso_obj(est[ite], Y, train_P, old_PX, old_PY)
-            err[ite,3] = iso_obj(est[ite], Y, test_P,  old_PX, old_PY)
-            err[ite,4] = iso_rnk1(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,5] = iso_rnk1(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,6] = iso_rnk2(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,7] = iso_rnk2(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,8] = iso_rnk3(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,9] = iso_rnk3(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,10]= iso_rnk4(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,11]= iso_rnk4(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,12]= iso_rnk5(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,13]= iso_rnk5(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,14]= iso_rnk6(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,15]= iso_rnk6(est[ite], W, test_P,  old_PX, old_PY)
-        err[ite,16] = iso_obj(est[ite], W, train_P, PX, PY)
-        err[ite,17] = iso_obj(est[ite], W, test_P,  PX, PY)
-        err[ite,18] = iso_obj(est[ite], Y, train_P, PX, PY)
-        err[ite,19] = iso_obj(est[ite], Y, test_P,  PX, PY)
-        err[ite,20] = iso_rnk1(est[ite], W, train_P, PX, PY)
-        err[ite,21] = iso_rnk1(est[ite], W, test_P,  PX, PY)
-        err[ite,22] = iso_rnk2(est[ite], W, train_P, PX, PY)
-        err[ite,23] = iso_rnk2(est[ite], W, test_P,  PX, PY)
-        err[ite,24] = iso_rnk3(est[ite], W, train_P, PX, PY)
-        err[ite,25] = iso_rnk3(est[ite], W, test_P,  PX, PY)
-        err[ite,26] = iso_rnk4(est[ite], W, train_P, PX, PY)
-        err[ite,27] = iso_rnk4(est[ite], W, test_P,  PX, PY)
-        err[ite,28] = iso_rnk5(est[ite], W, train_P, PX, PY)
-        err[ite,29] = iso_rnk5(est[ite], W, test_P,  PX, PY)
-        err[ite,30] = iso_rnk6(est[ite], W, train_P, PX, PY)
-        err[ite,31] = iso_rnk6(est[ite], W, test_P,  PX, PY)
 
-    np.savetxt("Results-nll/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed), err, delimiter=",")
-
+        fig, ax = plt.subplots(figsize=(10, 5)); cmap = plt.get_cmap('jet')
+        Xtra = (est[ite].reshape(-1,1)-est[ite].reshape(1,-1))[train_P==1].flatten()
+        ax.scatter(Xtra, W[train_P==1].flatten(), s=10, marker="D", edgecolor='k', facecolor='none', zorder=2)
+        Xtes = (est[ite].reshape(-1,1)-est[ite].reshape(1,-1))[test_P==1].flatten()
+        ax.scatter(Xtes, W[test_P==1].flatten(),  s=10, marker="o", edgecolor='r', facecolor='none', zorder=1)
+        LIM = np.max([np.max(np.fabs(Xtra)),np.max(np.fabs(Xtes))])
+        fx = np.linspace(-LIM*1.1,LIM*1.1,10000)#fx = np.linspace(-7,7,10000)#
+        ax.plot(fx, expit(fx), lw=3, color="g", zorder=3)
+        ax.plot(fx, model(fx, PX, PY), lw=3, color="b", linestyle="--", zorder=4)
+        ax.set_xlabel(r'$u=\hat{r}_i^{[1]}-\hat{r}_j^{[1]}$')
+        ax.set_ylabel(r'$y_{i,j}$, $\hat{\sigma}^{[0]}(u)$, $\hat{\sigma}^{[1]}(u)$')
+        ax.set_xlim(-LIM*1.1,LIM*1.1); ax.grid(True)#ax.set_xlim(-7,7); ax.grid(True)#
+        plt.savefig("Results-nll3/plot-%f-%d.png"%(r,seed), bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 

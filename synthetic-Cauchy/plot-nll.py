@@ -12,21 +12,30 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.isotonic import IsotonicRegression
 from scipy.stats import kendalltau,spearmanr
+import matplotlib
+import matplotlib.pyplot as plt
+import japanize_matplotlib
+from scipy import stats
+plt.rcParams["font.size"] = 20
+plt.rcParams['text.usetex'] = True
+import warnings
+warnings.simplefilter('ignore')
+
 
 args = sys.argv
-seed, r = int(args[1]), float(args[2])
-if os.path.isdir("Results-sq/%f"%r)==False: os.makedirs("Results-sq/%f"%r, exist_ok=True)
-if os.path.exists("Results-sq/%f/error-%f-%d.csv"%(r,r,seed))==False:
+seed, n, r, T = int(args[1]), int(args[2]), float(args[3]), int(args[4])
+if os.path.isdir("Results-nll3/")==False: os.makedirs("Results-nll3/", exist_ok=True)
+if os.path.exists("Results-nll3/plot-%d-%f-%d-%d.png"%(n,r,T,seed))==False:
     rd.seed(seed)
     # data
-    W = np.loadtxt("win_rate_matrix.csv", delimiter=",")
-    n = len(W[0])
-    Y = np.zeros((n,n))
+    R = rd.normal(0,1,n)
+    W = np.zeros((n,n)); Y = np.zeros((n,n))
     for i in range(n-1):
         for j in range(i+1,n):
-            if W[i,j]!=-1:
-                if W[i,j]>=0.5: Y[i,j] = 1.
-                if W[j,i]>=0.5: Y[j,i] = 1.
+            W[i,j] = rd.binomial(T, np.arctan(R[i]-R[j])/np.pi+0.5)/T
+            W[j,i] = 1.-W[i,j]
+            if W[i,j]>=0.5: Y[i,j] = 1.
+            if W[j,i]>=0.5: Y[j,i] = 1.
     # data split
     all_ij = []
     for i in range(n-1):
@@ -46,25 +55,20 @@ if os.path.exists("Results-sq/%f/error-%f-%d.csv"%(r,r,seed))==False:
     def obj(R, W, P):
         Q = R.reshape(-1,1)-R.reshape(1,-1)
         tmp1 = W[P==1]; tmp2 = expit(Q[P==1])
-        tmp = np.sum(np.square(tmp1-tmp2))
+        tmp = np.sum(-tmp1*np.log(tmp2))
         return tmp/np.sum(np.ones((n,n))[P==1])
     def objk(R, W, P, k):
         Q = R.reshape(-1,1)-R.reshape(1,-1)
         tmp1 = W[k,:][P[k,:]==1]; tmp2 = expit(Q[k,:][P[k,:]==1])
         tmp3 = W[:,k][P[:,k]==1]; tmp4 = expit(Q[:,k][P[:,k]==1])
-        tmp = np.sum(np.square(tmp1-tmp2))+np.sum(np.square(tmp3-tmp4))
-        return tmp
+        tmp = np.sum(-tmp1*np.log(tmp2))+np.sum(-tmp3*np.log(tmp4))
+        return np.nan_to_num(tmp, nan=10**8)
     def gradk(R, W, P, k):
-        Q = R.reshape(-1,1) - R.reshape(1,-1)
-        mask_k = (P[k,:] == 1)
-        mask_i = (P[:,k] == 1)
-        tmp2 = expit(Q[k,:][mask_k])
-        tmp1 = W[k,:][mask_k]
-        tmp4 = expit(Q[:,k][mask_i])
-        tmp3 = W[:,k][mask_i]
-        term1 = np.sum(2 * (tmp2 - tmp1) * tmp2 * (1 - tmp2))
-        term2 = np.sum(2 * (tmp4 - tmp3) * tmp4 * (1 - tmp4))
-        return term1 - term2
+        Q = R.reshape(-1,1)-R.reshape(1,-1)
+        tmp1 = W[k,:][P[k,:]==1]; tmp2 = expit(Q[k,:][P[k,:]==1])
+        tmp3 = W[:,k][P[:,k]==1]; tmp4 = expit(Q[:,k][P[:,k]==1])
+        tmp = -np.sum(tmp1*(1-tmp2))+np.sum(tmp3*(1-tmp4))
+        return tmp
     def rnk1(R, W, P):
         Q = R.reshape(-1,1)-R.reshape(1,-1)
         tmp1 = W[P==1]; tmp2 = expit(Q[P==1])
@@ -78,7 +82,7 @@ if os.path.exists("Results-sq/%f/error-%f-%d.csv"%(r,r,seed))==False:
     def rnk3(R, W, P):
         Q = R.reshape(-1,1)-R.reshape(1,-1)
         tmp1 = W[P==1]; tmp2 = expit(Q[P==1])
-        return 1-len(np.unique(tmp2))/tmp2.size
+        return np.sum(tmp2==0.5)/tmp2.size
     def rnk4(R, W, P):
         Q = R.reshape(-1,1)-R.reshape(1,-1)
         tmp1 = W[P==1]; tmp2 = Q[P==1]
@@ -92,11 +96,10 @@ if os.path.exists("Results-sq/%f/error-%f-%d.csv"%(r,r,seed))==False:
     def rnk6(R, W, P):
         Q = R.reshape(-1,1)-R.reshape(1,-1)
         tmp1 = W[P==1]; tmp2 = Q[P==1]
-        return 1-len(np.unique(tmp2))/tmp2.size
+        return np.sum(tmp2==0.5)/tmp2.size
 
-    ITE = 10
+    ITE = 1
     est = np.zeros((ITE,n))
-    err = np.zeros((ITE,32))
     for ite in range(ITE):
         # preparation
         EP1 = 100; EP2 = 100; res = np.zeros((EP1,n+2))
@@ -149,7 +152,6 @@ if os.path.exists("Results-sq/%f/error-%f-%d.csv"%(r,r,seed))==False:
             if res[t,-2]==res[t-1,-2]: break
         final_t = t+1
         est[ite] = res[t,:n].copy()
-        if np.array_equal(est[ite],est[ite-1]): break
 
 
         # data preparation
@@ -162,44 +164,50 @@ if os.path.exists("Results-sq/%f/error-%f-%d.csv"%(r,r,seed))==False:
         PX = ir.X_thresholds_.astype(np.float64)
         PY = ir.y_thresholds_.astype(np.float64)
 
+
         def model(u, PX, PY):
             return np.interp(u, PX, PY, left=PY[0], right=PY[-1])
         def iso_obj(R, W, P, PX, PY):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             M = model(Q, PX, PY)
             tmp1 = W[P==1]; tmp2 = M[P==1]
-            tmp = np.sum(np.square(tmp1-tmp2))
+            tmp = np.sum(-tmp1[tmp1!=0]*np.log(tmp2[tmp1!=0]))
             return tmp/np.sum(np.ones((n,n))[P==1])
         def iso_objk(R, W, P, PX, PY, k):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             M = model(Q, PX, PY)
             tmp1 = W[k,:][P[k,:]==1]; tmp2 = M[k,:][P[k,:]==1]
             tmp3 = W[:,k][P[:,k]==1]; tmp4 = M[:,k][P[:,k]==1]
-            tmp = np.sum(np.square(tmp1-tmp2))+np.sum(np.square(tmp3-tmp4))
-            return tmp
+            tmp = np.sum(-tmp1[tmp1!=0]*np.log(tmp2[tmp1!=0]))+np.sum(-tmp3[tmp3!=0]*np.log(tmp4[tmp3!=0]))
+            return np.nan_to_num(tmp, nan=10**8)
+
         def iso_gradk(R, W, P, PX, PY, k):
             Q_k_all = R[k] - R
             Q_all_k = R - R[k]
             slopes = (PY[1:] - PY[:-1]) / (PX[1:] - PX[:-1])
             L = len(PX)
-            def get_grad_contribution(Q_vec, W_vec, P_mask):
-                M_vec = model(Q_vec, PX, PY)
+            def get_slope(Q_vec):
                 indices = np.searchsorted(PX, Q_vec, side='left')
-                interior = (indices > 0) & (indices < L) & (P_mask == 1)
                 current_slopes = np.zeros_like(Q_vec, dtype=float)
-                on_node = interior & np.array([np.isclose(q, PX).any() for q in Q_vec])
-                normal = interior & ~on_node
-                current_slopes[normal] = slopes[indices[normal] - 1]
+                valid = (indices > 0) & (indices < L)
+                idx = indices[valid]
+                current_slopes[valid] = slopes[idx - 1]
+                on_node = valid & (np.isin(Q_vec, PX))
                 if np.any(on_node):
-                    idx = indices[on_node]
-                    left_s = slopes[idx - 1]
-                    right_s = np.where(idx < L-1, slopes[np.minimum(idx, L-2)], left_s)
-                    current_slopes[on_node] = np.maximum(left_s, right_s)
-                diff = 2 * (M_vec - W_vec) * current_slopes * P_mask
-                return np.sum(diff)
-            term1 = get_grad_contribution(Q_k_all, W[k, :], P[k, :])
-            term2 = get_grad_contribution(Q_all_k, W[:, k], P[:, k])
-            return term1 - term2
+                    idx_node = indices[on_node]
+                    left = slopes[idx_node - 1]
+                    right = slopes[np.minimum(idx_node, L-2)]
+                    current_slopes[on_node] = np.maximum(left, right)
+                return current_slopes
+            M_k = model(Q_k_all, PX, PY)
+            slope_k = get_slope(Q_k_all)
+            mask_k = (P[k, :] == 1) & (M_k!=0)
+            term1 = np.sum(W[k, mask_k] / M_k[mask_k] * slope_k[mask_k])
+            M_i = model(Q_all_k, PX, PY)
+            slope_i = get_slope(Q_all_k)
+            mask_i = (P[:, k] == 1) & (M_i!=0)
+            term2 = np.sum(W[mask_i, k] / M_i[mask_i] * slope_i[mask_i])
+            return -term1 + term2
         def iso_rnk1(R, W, P, PX, PY):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             M = model(Q, PX, PY)
@@ -216,7 +224,7 @@ if os.path.exists("Results-sq/%f/error-%f-%d.csv"%(r,r,seed))==False:
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             M = model(Q, PX, PY)
             tmp1 = W[P==1]; tmp2 = M[P==1]
-            return 1-len(np.unique(tmp2))/tmp2.size
+            return np.sum(tmp2==0.5)/tmp2.size
         def iso_rnk4(R, W, P, PX, PY):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             tmp1 = W[P==1]; tmp2 = Q[P==1]
@@ -230,59 +238,19 @@ if os.path.exists("Results-sq/%f/error-%f-%d.csv"%(r,r,seed))==False:
         def iso_rnk6(R, W, P, PX, PY):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             tmp1 = W[P==1]; tmp2 = Q[P==1]
-            return 1-len(np.unique(tmp2))/tmp2.size
+            return np.sum(tmp2==0.5)/tmp2.size
 
-        # evaluation
-        if ite==0:
-            err[ite,0] = obj(est[ite], W, train_P)
-            err[ite,1] = obj(est[ite], W, test_P)
-            err[ite,2] = obj(est[ite], Y, train_P)
-            err[ite,3] = obj(est[ite], Y, test_P)
-            err[ite,4] = rnk1(est[ite], W, train_P)
-            err[ite,5] = rnk1(est[ite], W, test_P)
-            err[ite,6] = rnk2(est[ite], W, train_P)
-            err[ite,7] = rnk2(est[ite], W, test_P)
-            err[ite,8] = rnk3(est[ite], W, train_P)
-            err[ite,9] = rnk3(est[ite], W, test_P)
-            err[ite,10]= rnk4(est[ite], W, train_P)
-            err[ite,11]= rnk4(est[ite], W, test_P)
-            err[ite,12]= rnk5(est[ite], W, train_P)
-            err[ite,13]= rnk5(est[ite], W, test_P)
-            err[ite,14]= rnk6(est[ite], W, train_P)
-            err[ite,15]= rnk6(est[ite], W, test_P)
-        else:
-            err[ite,0] = iso_obj(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,1] = iso_obj(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,2] = iso_obj(est[ite], Y, train_P, old_PX, old_PY)
-            err[ite,3] = iso_obj(est[ite], Y, test_P,  old_PX, old_PY)
-            err[ite,4] = iso_rnk1(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,5] = iso_rnk1(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,6] = iso_rnk2(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,7] = iso_rnk2(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,8] = iso_rnk3(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,9] = iso_rnk3(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,10]= iso_rnk4(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,11]= iso_rnk4(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,12]= iso_rnk5(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,13]= iso_rnk5(est[ite], W, test_P,  old_PX, old_PY)
-            err[ite,14]= iso_rnk6(est[ite], W, train_P, old_PX, old_PY)
-            err[ite,15]= iso_rnk6(est[ite], W, test_P,  old_PX, old_PY)
-        err[ite,16] = iso_obj(est[ite], W, train_P, PX, PY)
-        err[ite,17] = iso_obj(est[ite], W, test_P,  PX, PY)
-        err[ite,18] = iso_obj(est[ite], Y, train_P, PX, PY)
-        err[ite,19] = iso_obj(est[ite], Y, test_P,  PX, PY)
-        err[ite,20] = iso_rnk1(est[ite], W, train_P, PX, PY)
-        err[ite,21] = iso_rnk1(est[ite], W, test_P,  PX, PY)
-        err[ite,22] = iso_rnk2(est[ite], W, train_P, PX, PY)
-        err[ite,23] = iso_rnk2(est[ite], W, test_P,  PX, PY)
-        err[ite,24] = iso_rnk3(est[ite], W, train_P, PX, PY)
-        err[ite,25] = iso_rnk3(est[ite], W, test_P,  PX, PY)
-        err[ite,26] = iso_rnk4(est[ite], W, train_P, PX, PY)
-        err[ite,27] = iso_rnk4(est[ite], W, test_P,  PX, PY)
-        err[ite,28] = iso_rnk5(est[ite], W, train_P, PX, PY)
-        err[ite,29] = iso_rnk5(est[ite], W, test_P,  PX, PY)
-        err[ite,30] = iso_rnk6(est[ite], W, train_P, PX, PY)
-        err[ite,31] = iso_rnk6(est[ite], W, test_P,  PX, PY)
 
-    np.savetxt("Results-sq/%f/error-%f-%d.csv"%(r,r,seed), err, delimiter=",")
-
+        fig, ax = plt.subplots(figsize=(10, 5)); cmap = plt.get_cmap('jet')
+        Xtra = (est[ite].reshape(-1,1)-est[ite].reshape(1,-1))[train_P==1].flatten()
+        ax.scatter(Xtra, W[train_P==1].flatten(), s=10, marker="D", edgecolor='k', facecolor='none', zorder=2)
+        Xtes = (est[ite].reshape(-1,1)-est[ite].reshape(1,-1))[test_P==1].flatten()
+        ax.scatter(Xtes, W[test_P==1].flatten(),  s=10, marker="o", edgecolor='r', facecolor='none', zorder=1)
+        LIM = np.max([np.max(np.fabs(Xtra)),np.max(np.fabs(Xtes))])
+        fx = np.linspace(-LIM*1.1,LIM*1.1,10000)#fx = np.linspace(-7,7,10000)#
+        ax.plot(fx, expit(fx), lw=3, color="g", zorder=3)
+        ax.plot(fx, model(fx, PX, PY), lw=3, color="b", linestyle="--", zorder=4)
+        ax.set_xlabel(r'$u=\hat{r}_i^{[1]}-\hat{r}_j^{[1]}$')
+        ax.set_ylabel(r'$y_{i,j}$, $\hat{\sigma}^{[0]}(u)$, $\hat{\sigma}^{[1]}(u)$')
+        ax.set_xlim(-LIM*1.1,LIM*1.1); ax.grid(True)#ax.set_xlim(-7,7); ax.grid(True)#
+        plt.savefig("Results-nll3/plot-%d-%f-%d-%d.png"%(n,r,T,seed), bbox_inches="tight", pad_inches=.02, facecolor=fig.get_facecolor(), dpi=100, edgecolor='none', metadata={'Software': None}, pil_kwargs={'optimize': True}); plt.close()#,format='webp', 

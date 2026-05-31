@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-data = pd.read_csv('gl2024.txt', header=None)
+data = pd.read_csv('gl2025.txt', header=None)
 
 teams = set()
 

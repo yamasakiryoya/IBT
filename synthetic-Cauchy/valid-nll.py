@@ -14,16 +14,17 @@ from sklearn.isotonic import IsotonicRegression
 from scipy.stats import kendalltau,spearmanr
 
 args = sys.argv
-seed, r = int(args[1]), float(args[2])
-if os.path.isdir("Results-nll2/%f"%r)==False: os.makedirs("Results-nll2/%f"%r, exist_ok=True)
-if os.path.exists("Results-nll2/%f/error-%f-%d.csv"%(r,r,seed))==False:
+seed, n, r, T = int(args[1]), int(args[2]), float(args[3]), int(args[4])
+if os.path.isdir("Results-nll2/%d-%f-%d"%(n,r,T))==False: os.makedirs("Results-nll2/%d-%f-%d"%(n,r,T), exist_ok=True)
+if os.path.exists("Results-nll2/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed))==False:
     rd.seed(seed)
     # data
-    W = np.loadtxt("win_rate_matrix.csv", delimiter=",")
-    n = len(W[0])
-    Y = np.zeros((n,n))
+    R = rd.normal(0,np.sqrt(3),n)
+    W = np.zeros((n,n)); Y = np.zeros((n,n))
     for i in range(n-1):
         for j in range(i+1,n):
+            W[i,j] = rd.binomial(T, np.arctan(R[i]-R[j])/np.pi+0.5)/T
+            W[j,i] = 1.-W[i,j]
             if W[i,j]>=0.5: Y[i,j] = 1.
             if W[j,i]>=0.5: Y[j,i] = 1.
     # data split
@@ -86,7 +87,7 @@ if os.path.exists("Results-nll2/%f/error-%f-%d.csv"%(r,r,seed))==False:
         def rnk3(R, W, P):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             tmp1 = W[P==1]; tmp2 = expit(Q[P==1])
-            return 1-len(np.unique(tmp2))/tmp2.size
+            return np.sum(tmp2==0.5)/tmp2.size
         def rnk4(R, W, P):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             tmp1 = W[P==1]; tmp2 = Q[P==1]
@@ -100,7 +101,7 @@ if os.path.exists("Results-nll2/%f/error-%f-%d.csv"%(r,r,seed))==False:
         def rnk6(R, W, P):
             Q = R.reshape(-1,1)-R.reshape(1,-1)
             tmp1 = W[P==1]; tmp2 = Q[P==1]
-            return 1-len(np.unique(tmp2))/tmp2.size
+            return np.sum(tmp2==0.5)/tmp2.size
 
         est = np.zeros((ITE,n))
         for ite in range(ITE):
@@ -225,7 +226,7 @@ if os.path.exists("Results-nll2/%f/error-%f-%d.csv"%(r,r,seed))==False:
                 Q = R.reshape(-1,1)-R.reshape(1,-1)
                 M = model(Q, PX, PY)
                 tmp1 = W[P==1]; tmp2 = M[P==1]
-                return 1-len(np.unique(tmp2))/tmp2.size
+                return np.sum(tmp2==0.5)/tmp2.size
             def iso_rnk4(R, W, P, PX, PY):
                 Q = R.reshape(-1,1)-R.reshape(1,-1)
                 tmp1 = W[P==1]; tmp2 = Q[P==1]
@@ -239,7 +240,7 @@ if os.path.exists("Results-nll2/%f/error-%f-%d.csv"%(r,r,seed))==False:
             def iso_rnk6(R, W, P, PX, PY):
                 Q = R.reshape(-1,1)-R.reshape(1,-1)
                 tmp1 = W[P==1]; tmp2 = Q[P==1]
-                return 1-len(np.unique(tmp2))/tmp2.size
+                return np.sum(tmp2==0.5)/tmp2.size
 
             # evaluation
             if ite==0:
@@ -298,5 +299,5 @@ if os.path.exists("Results-nll2/%f/error-%f-%d.csv"%(r,r,seed))==False:
                 err[K,ite,:16] = err[K,ite-1,16:]
                 err[K,ite,16:] = err[K,ite-1,16:]
     error = np.mean(err, axis=0)
-    np.savetxt("Results-nll2/%f/error-%f-%d.csv"%(r,r,seed), error, delimiter=",")
+    np.savetxt("Results-nll2/%d-%f-%d/error-%d-%f-%d-%d.csv"%(n,r,T,n,r,T,seed), error, delimiter=",")
 
