@@ -14,5 +14,5 @@ Real-World Data Experiments:
 
 
 win_rate_matrix.csv data was generatad with win_rate_matrix.py and Season_2425_PremierLeague.csv in ./football;
-win_rate_matrix.csv data was generatad with win_rate_matrix.py and gl2024.txt in ./baseball;
+win_rate_matrix.csv data was generatad with win_rate_matrix.py and gl2025.txt in ./baseball;
 win_rate_matrix.csv data was generatad with win_rate_matrix.py and atp_matches_2025.csv in ./tennis.
